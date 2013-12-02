@@ -410,63 +410,6 @@ public:
 
 	// TCP options in TcpSocket.h/TcpSocket.cpp
 
-#ifdef ENABLE_POOL
-	/** @name Connection Pool */
-	//@{
-	/** Client = connecting TcpSocket. */
-	void SetIsClient();
-	/** Socket type from socket() call. */
-	void SetSocketType(int x);
-	/** Socket type from socket() call. */
-	int GetSocketType();
-	/** Protocol type from socket() call. */
-	void SetSocketProtocol(const std::string& x);
-	/** Protocol type from socket() call. */
-	const std::string& GetSocketProtocol();
-	/** Instruct a client socket to stay open in the connection pool after use.
-		If you have connected to a server using tcp, you can call SetRetain
-		to leave the connection open after your socket instance has been deleted.
-		The next connection you make to the same server will reuse the already
-		opened connection, if it is still available.
-	*/
-	void SetRetain();
-	/** Check retain flag.
-		\return true if the socket should be moved to connection pool after use */
-	bool Retain();
-	/** Copy connection parameters from sock. */
-	void CopyConnection(Socket *sock);
-	//@}
-#endif // ENABLE_POOL
-
-#ifdef ENABLE_RESOLVER
-	/** \name Asynchronous Resolver */
-	//@{
-	/** Request an asynchronous dns resolution.
-		\param host hostname to be resolved
-		\param port port number passed along for the ride
-		\return Resolve ID */
-	int Resolve(const std::string& host,port_t port = 0);
-
-	/** Callback returning a resolved address.
-		\param id Resolve ID from Resolve call
-		\param a resolved ip address
-		\param port port number passed to Resolve */
-	virtual void OnResolved(int id,ipaddr_t a,port_t port);
-
-	/** Request asynchronous reverse dns lookup.
-		\param a in_addr to be translated */
-	int Resolve(ipaddr_t a);
-
-	/** Callback returning reverse resolve results.
-		\param id Resolve ID
-		\param name Resolved hostname */
-	virtual void OnReverseResolved(int id,const std::string& name);
-	/** Callback indicating failed dns lookup.
-		\param id Resolve ID */
-	virtual void OnResolveFailed(int id);
-	//@}
-#endif  // ENABLE_RESOLVER
-
 protected:
 	/** default constructor not available */
 	Socket() : m_handler(m_handler) {}
@@ -497,13 +440,6 @@ private:
 
 #ifdef _WIN32
 static	WSAInitializer m_winsock_init; ///< Winsock initialization singleton class
-#endif
-
-#ifdef ENABLE_POOL
-	int m_socket_type; ///< Type of socket, from socket() call
-	std::string m_socket_protocol; ///< Protocol, from socket() call
-	bool m_bClient; ///< only client connections are pooled
-	bool m_bRetain; ///< keep connection on close
 #endif
 };
 

@@ -31,10 +31,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define _SOCKETS_TcpSocket_H
 #include "sockets-config.h"
 #include "StreamSocket.h"
-#ifdef HAVE_OPENSSL
-#include <openssl/ssl.h>
-#include "SSLInitializer.h"
-#endif
 
 #include <string.h>
 
@@ -148,15 +144,6 @@ public:
 		\param port Port number
 		\param skip_socks Do not use socks4 even if configured */
 	bool Open(ipaddr_t ip,port_t port,bool skip_socks = false);
-#ifdef ENABLE_IPV6
-#ifdef IPPROTO_IPV6
-	/** Open connection. 
-		\param ip Ipv6 address
-		\param port Port number
-		\param skip_socks Do not use socks4 even if configured */
-	bool Open(in6_addr ip,port_t port,bool skip_socks = false);
-#endif
-#endif
 	bool Open(Ipv4Address&,bool skip_socks = false);
 	bool Open(Ipv4Address&,Ipv4Address& bind_address,bool skip_socks = false);
 	/** Open connection. 
@@ -217,26 +204,6 @@ public:
 		\return 'need_more' */
 	bool OnSocks4Read();
 
-#ifdef ENABLE_RESOLVER
-	/** Callback executed when resolver thread has finished a resolve request. */
-	void OnResolved(int id,ipaddr_t a,port_t port);
-#ifdef ENABLE_IPV6
-	void OnResolved(int id,in6_addr& a,port_t port);
-#endif
-#endif
-#ifdef HAVE_OPENSSL
-	/** Callback for 'New' ssl support - replaces SSLSocket. Internal use. */
-	void OnSSLConnect();
-	/** Callback for 'New' ssl support - replaces SSLSocket. Internal use. */
-	void OnSSLAccept();
-	/** This method must be implemented to initialize 
-		the ssl context for an outgoing connection. */
-	virtual void InitSSLClient();
-	/** This method must be implemented to initialize 
-		the ssl context for an incoming connection. */
-	virtual void InitSSLServer();
-#endif
-
 #ifdef ENABLE_RECONNECT
 	/** Flag that says a broken connection will try to reconnect. */
 	void SetReconnect(bool = true);
@@ -270,32 +237,6 @@ protected:
 	void OnRead();
 	void OnRead( char *buf, size_t n );
 	void OnWrite();
-#ifdef HAVE_OPENSSL
-	/** SSL; Initialize ssl context for a client socket. 
-		\param meth_in SSL method */
-	void InitializeContext(const std::string& context, SSL_METHOD *meth_in = NULL);
-	/** SSL; Initialize ssl context for a server socket. 
-		\param keyfile Combined private key/certificate file 
-		\param password Password for private key 
-		\param meth_in SSL method */
-	void InitializeContext(const std::string& context, const std::string& keyfile, const std::string& password, SSL_METHOD *meth_in = NULL);
-	/** SSL; Initialize ssl context for a server socket. 
-		\param certfile Separate certificate file
-		\param keyfile Combined private key/certificate file 
-		\param password Password for private key 
-		\param meth_in SSL method */
-	void InitializeContext(const std::string& context, const std::string& certfile, const std::string& keyfile, const std::string& password, SSL_METHOD *meth_in = NULL);
-	/** SSL; Password callback method. */
-static	int SSL_password_cb(char *buf,int num,int rwflag,void *userdata);
-	/** SSL; Get pointer to ssl context structure. */
-	virtual SSL_CTX *GetSslContext();
-	/** SSL; Get pointer to ssl structure. */
-	virtual SSL *GetSsl();
-	/** ssl; still negotiating connection. */
-	bool SSLNegotiate();
-	/** SSL; Get ssl password. */
-	const std::string& GetPassword();
-#endif
 
 	CircularBuffer ibuf; ///< Circular input buffer
 
@@ -321,26 +262,6 @@ private:
 	OUTPUT *m_obuf_top; ///< output buffer on top
 	size_t m_transfer_limit;
 	size_t m_output_length;
-
-#ifdef HAVE_OPENSSL
-static	SSLInitializer m_ssl_init;
-	SSL_CTX *m_ssl_ctx; ///< ssl context
-	SSL *m_ssl; ///< ssl 'socket'
-	BIO *m_sbio; ///< ssl bio
-	std::string m_password; ///< ssl password
-#endif
-
-#ifdef ENABLE_SOCKS4
-	int m_socks4_state; ///< socks4 support
-	char m_socks4_vn; ///< socks4 support, temporary variable
-	char m_socks4_cd; ///< socks4 support, temporary variable
-	unsigned short m_socks4_dstport; ///< socks4 support
-	unsigned long m_socks4_dstip; ///< socks4 support
-#endif
-
-#ifdef ENABLE_RESOLVER
-	int m_resolver_id; ///< Resolver id (if any) for current Open call
-#endif
 
 #ifdef ENABLE_RECONNECT
 	bool m_b_reconnect; ///< Reconnect on lost connection flag

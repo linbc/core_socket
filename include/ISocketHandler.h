@@ -42,9 +42,6 @@ namespace SOCKETS_NAMESPACE {
 
 typedef enum {
 	LIST_CALLONCONNECT = 0,
-#ifdef ENABLE_DETACH
-	LIST_DETACH,
-#endif
 	LIST_TIMEOUT,
 	LIST_RETRY,
 	LIST_CLOSE
@@ -59,28 +56,6 @@ class Mutex;
 class ISocketHandler
 {
 	friend class Socket;
-
-public:
-	/** Connection pool class for internal use by the ISocketHandler. 
-		\ingroup internal */
-#ifdef ENABLE_POOL
-	class PoolSocket : public Socket
-	{
-	public:
-		PoolSocket(ISocketHandler& h,Socket *src) : Socket(h) {
-			CopyConnection( src );
-			SetIsClient();
-		}
-
-		void OnRead() {
-			Handler().LogError(this, "OnRead", 0, "data on hibernating socket", LOG_LEVEL_FATAL);
-			SetCloseAndDelete();
-		}
-		void OnOptions(int,int,int,SOCKET) {}
-
-	};
-#endif
-
 public:
 	virtual ~ISocketHandler() {}
 
@@ -119,19 +94,6 @@ public:
 
 	/** Called by Socket when a socket changes state. */
 	virtual void AddList(SOCKET s,list_t which_one,bool add) = 0;
-
-	// -------------------------------------------------------------------------
-	// Connection pool
-	// -------------------------------------------------------------------------
-#ifdef ENABLE_POOL
-	/** Find available open connection (used by connection pool). */
-	virtual ISocketHandler::PoolSocket *FindConnection(int type,const std::string& protocol,Ipv4Address&) = 0;
-	/** Enable connection pool (by default disabled). */
-	virtual void EnablePool(bool = true) = 0;
-	/** Check pool status. 
-		\return true if connection pool is enabled */
-	virtual bool PoolEnabled() = 0;
-#endif // ENABLE_POOL
 };
 
 

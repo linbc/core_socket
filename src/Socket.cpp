@@ -82,11 +82,6 @@ Socket::Socket(ISocketHandler& h)
 ,m_client_remote_address(NULL)
 ,m_remote_address(NULL)
 ,m_bLost(false)
-#ifdef ENABLE_POOL
-,m_socket_type(0)
-,m_bClient(false)
-,m_bRetain(false)
-#endif
 {
 }
 
@@ -94,11 +89,7 @@ Socket::Socket(ISocketHandler& h)
 Socket::~Socket()
 {
 	Handler().Remove(this);
-	if (m_socket != INVALID_SOCKET
-#ifdef ENABLE_POOL
-		 && !m_bRetain
-#endif
-		)
+	if (m_socket != INVALID_SOCKET)
 	{
 		Close();
 	}
@@ -172,11 +163,6 @@ SOCKET Socket::CreateSocket(int af,int type, const std::string& protocol)
 {
 	struct protoent *p = NULL;
 	SOCKET s;
-
-#ifdef ENABLE_POOL
-	m_socket_type = type;
-	m_socket_protocol = protocol;
-#endif
 	if (!protocol.empty())
 	{
 		p = getprotobyname( protocol.c_str() );
@@ -547,64 +533,7 @@ uint64_t Socket::GetBytesReceived(bool)
 	return 0;
 }
 
-#ifdef ENABLE_POOL
-void Socket::CopyConnection(Socket *sock)
-{
-	Attach( sock -> GetSocket() );
-	SetSocketType( sock -> GetSocketType() );
-	SetSocketProtocol( sock -> GetSocketProtocol() );
-
-	SetClientRemoteAddress( *sock -> GetClientRemoteAddress() );
-	SetRemoteAddress( *sock -> GetRemoteIpv4Address() );
-}
-
-
-void Socket::SetIsClient()
-{
-	m_bClient = true;
-}
-
-
-void Socket::SetSocketType(int x)
-{
-	m_socket_type = x;
-}
-
-
-int Socket::GetSocketType()
-{
-	return m_socket_type;
-}
-
-
-void Socket::SetSocketProtocol(const std::string& x)
-{
-	m_socket_protocol = x;
-}
-
-
-const std::string& Socket::GetSocketProtocol()
-{
-	return m_socket_protocol;
-}
-
-
-void Socket::SetRetain()
-{
-	if (m_bClient) m_bRetain = true;
-}
-
-
-bool Socket::Retain()
-{
-	return m_bRetain;
-}
-
-
-#endif // ENABLE_POOL
-
 /* IP options */
-
 
 bool Socket::SetIpOptions(const void *p, socklen_t len)
 {

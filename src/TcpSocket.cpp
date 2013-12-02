@@ -78,17 +78,6 @@ TcpSocket::TcpSocket(ISocketHandler& h) : StreamSocket(h)
 ,m_obuf_top(NULL)
 ,m_transfer_limit(0)
 ,m_output_length(0)
-#ifdef HAVE_OPENSSL
-,m_ssl_ctx(NULL)
-,m_ssl(NULL)
-,m_sbio(NULL)
-#endif
-#ifdef ENABLE_SOCKS4
-,m_socks4_state(0)
-#endif
-#ifdef ENABLE_RESOLVER
-,m_resolver_id(0)
-#endif
 #ifdef ENABLE_RECONNECT
 ,m_b_reconnect(false)
 ,m_b_is_reconnect(false)
@@ -115,17 +104,6 @@ TcpSocket::TcpSocket(ISocketHandler& h,size_t isize,size_t osize) : StreamSocket
 ,m_obuf_top(NULL)
 ,m_transfer_limit(0)
 ,m_output_length(0)
-#ifdef HAVE_OPENSSL
-,m_ssl_ctx(NULL)
-,m_ssl(NULL)
-,m_sbio(NULL)
-#endif
-#ifdef ENABLE_SOCKS4
-,m_socks4_state(0)
-#endif
-#ifdef ENABLE_RESOLVER
-,m_resolver_id(0)
-#endif
 #ifdef ENABLE_RECONNECT
 ,m_b_reconnect(false)
 ,m_b_is_reconnect(false)
@@ -150,12 +128,6 @@ TcpSocket::~TcpSocket()
 		delete p;
 		m_obuf.erase(it);
 	}
-#ifdef HAVE_OPENSSL
-	if (m_ssl)
-	{
-		SSL_free(m_ssl);
-	}
-#endif
 }
 
 
@@ -165,18 +137,6 @@ bool TcpSocket::Open(ipaddr_t ip,port_t port,bool skip_socks)
 	Ipv4Address local;
 	return Open(ad, local, skip_socks);
 }
-
-
-#ifdef ENABLE_IPV6
-#ifdef IPPROTO_IPV6
-bool TcpSocket::Open(in6_addr ip,port_t port,bool skip_socks)
-{
-	Ipv6Address ad(ip, port);
-	return Open(ad, skip_socks);
-}
-#endif
-#endif
-
 
 bool TcpSocket::Open(Ipv4Address& ad,bool skip_socks)
 {
@@ -200,26 +160,6 @@ bool TcpSocket::Open(Ipv4Address& ad,Ipv4Address& bind_ad,bool skip_socks)
 		return false;
 	}
 	SetConnecting(false);
-#ifdef ENABLE_SOCKS4
-	SetSocks4(false);
-#endif
-	// check for pooling
-#ifdef ENABLE_POOL
-	if (Handler().PoolEnabled())
-	{
-		ISocketHandler::PoolSocket *pools = Handler().FindConnection(SOCK_STREAM, "tcp", ad);
-		if (pools)
-		{
-			CopyConnection( pools );
-			delete pools;
-
-			SetIsClient();
-			SetCallOnConnect(); // ISocketHandler must call OnConnect
-			Handler().LogError(this, "SetCallOnConnect", 0, "Found pooled connection", LOG_LEVEL_INFO);
-			return true;
-		}
-	}
-#endif
 	// if not, create new connection
 	SOCKET s = CreateSocket(ad.GetFamily(), SOCK_STREAM, "tcp");
 	if (s == INVALID_SOCKET)
@@ -233,35 +173,14 @@ bool TcpSocket::Open(Ipv4Address& ad,Ipv4Address& bind_ad,bool skip_socks)
 		closesocket(s);
 		return false;
 	}
-#ifdef ENABLE_POOL
-	SetIsClient(); // client because we connect
-#endif
 	SetClientRemoteAddress(ad);
 	int n = 0;
 	if (bind_ad.GetPort() != 0)
 	{
 		bind(s, bind_ad, bind_ad);
-	}
-#ifdef ENABLE_SOCKS4
-	if (!skip_socks && GetSocks4Host() && GetSocks4Port())
-	{
-		Ipv4Address sa(GetSocks4Host(), GetSocks4Port());
-		{
-			std::string sockshost;
-			Utility::l2ip(GetSocks4Host(), sockshost);
-			Handler().LogError(this, "Open", 0, "Connecting to socks4 server @ " + sockshost + ":" +
-				Utility::l2string(GetSocks4Port()), LOG_LEVEL_INFO);
-		}
-		SetSocks4();
-		n = connect(s, sa, sa);
-		SetRemoteAddress(sa);
-	}
-	else
-#endif
-	{
-		n = connect(s, ad, ad);
-		SetRemoteAddress(ad);
-	}
+	}	
+	n = connect(s, ad, ad);
+	SetRemoteAddress(ad);
 	if (n == -1)
 	{
 		// check error code that means a connect is in progress
@@ -275,14 +194,6 @@ bool TcpSocket::Open(Ipv4Address& ad,Ipv4Address& bind_ad,bool skip_socks)
 			SetConnecting( true ); // this flag will control fd_set's
 		}
 		else
-#ifdef ENABLE_SOCKS4
-		if (Socks4() && Handler().Socks4TryDirect() ) // retry
-		{
-			closesocket(s);
-			return Open(ad, true);
-		}
-		else
-#endif
 #ifdef ENABLE_RECONNECT
 		if (Reconnect())
 		{
@@ -313,32 +224,6 @@ bool TcpSocket::Open(Ipv4Address& ad,Ipv4Address& bind_ad,bool skip_socks)
 
 bool TcpSocket::Open(const std::string &host,port_t port)
 {
-#ifdef ENABLE_IPV6
-#ifdef IPPROTO_IPV6
-	if (IsIpv6())
-	{
-#ifdef ENABLE_RESOLVER
-		if (!Handler().ResolverEnabled() || Utility::isipv6(host) )
-		{
-#endif
-			in6_addr a;
-			if (!Utility::u2ip(host, a))
-			{
-				SetCloseAndDelete();
-				return false;
-			}
-			Ipv6Address ad(a, port);
-			Ipv6Address local;
-			return Open(ad, local);
-#ifdef ENABLE_RESOLVER
-		}
-		m_resolver_id = Resolve6(host, port);
-		return true;
-#endif
-	}
-#endif
-#endif
-
 	ipaddr_t l;
 	if (!Utility::u2ip(host,l))
 	{
@@ -358,102 +243,39 @@ void TcpSocket::OnRead()
 #else
 	char buf[TCP_BUFSIZE_READ];
 #endif
-#ifdef HAVE_OPENSSL
-	if (IsSSL())
+	
+	n = recv(GetSocket(), buf, TCP_BUFSIZE_READ, MSG_NOSIGNAL);
+	if (n == -1)
 	{
-		if (!Ready())
-			return;
-		n = SSL_read(m_ssl, buf, TCP_BUFSIZE_READ);
-		if (n == -1)
+		Handler().LogError(this, "read", Errno, StrError(Errno), LOG_LEVEL_FATAL);
+		OnDisconnect();
+		SetCloseAndDelete(true);
+		SetFlushBeforeClose(false);
+		SetLost();
+		return;
+	}
+	else if (!n)
+	{
+		OnDisconnect();
+		SetCloseAndDelete(true);
+		SetFlushBeforeClose(false);
+		SetLost();
+		SetShutdown(SHUT_WR);
+		return;
+	}
+	else if (n > 0 && n <= TCP_BUFSIZE_READ)
+	{
+		m_bytes_received += n;
+		if (!m_b_input_buffer_disabled && !ibuf.Write(buf,n))
 		{
-			n = SSL_get_error(m_ssl, n);
-			switch (n)
-			{
-			case SSL_ERROR_NONE:
-			case SSL_ERROR_WANT_READ:
-			case SSL_ERROR_WANT_WRITE:
-				break;
-			case SSL_ERROR_ZERO_RETURN:
-DEB(				fprintf(stderr, "SSL_read() returns zero - closing socket\n");)
-				OnDisconnect();
-				SetCloseAndDelete(true);
-				SetFlushBeforeClose(false);
-				SetLost();
-				break;
-			default:
-DEB(				fprintf(stderr, "SSL read problem, errcode = %d\n",n);)
-				OnDisconnect();
-				SetCloseAndDelete(true);
-				SetFlushBeforeClose(false);
-				SetLost();
-			}
-			return;
-		}
-		else
-		if (!n)
-		{
-			OnDisconnect();
-			SetCloseAndDelete(true);
-			SetFlushBeforeClose(false);
-			SetLost();
-			SetShutdown(SHUT_WR);
-			return;
-		}
-		else
-		if (n > 0 && n <= TCP_BUFSIZE_READ)
-		{
-			m_bytes_received += n;
-			if (GetTrafficMonitor())
-			{
-				GetTrafficMonitor() -> fwrite(buf, 1, n);
-			}
-			if (!m_b_input_buffer_disabled && !ibuf.Write(buf,n))
-			{
-				Handler().LogError(this, "OnRead(ssl)", 0, "ibuf overflow", LOG_LEVEL_WARNING);
-			}
-		}
-		else
-		{
-			Handler().LogError(this, "OnRead(ssl)", n, "abnormal value from SSL_read", LOG_LEVEL_ERROR);
+			Handler().LogError(this, "OnRead", 0, "ibuf overflow", LOG_LEVEL_WARNING);
 		}
 	}
 	else
-#endif // HAVE_OPENSSL
 	{
-		n = recv(GetSocket(), buf, TCP_BUFSIZE_READ, MSG_NOSIGNAL);
-		if (n == -1)
-		{
-			Handler().LogError(this, "read", Errno, StrError(Errno), LOG_LEVEL_FATAL);
-			OnDisconnect();
-			SetCloseAndDelete(true);
-			SetFlushBeforeClose(false);
-			SetLost();
-			return;
-		}
-		else
-		if (!n)
-		{
-			OnDisconnect();
-			SetCloseAndDelete(true);
-			SetFlushBeforeClose(false);
-			SetLost();
-			SetShutdown(SHUT_WR);
-			return;
-		}
-		else
-		if (n > 0 && n <= TCP_BUFSIZE_READ)
-		{
-			m_bytes_received += n;
-			if (!m_b_input_buffer_disabled && !ibuf.Write(buf,n))
-			{
-				Handler().LogError(this, "OnRead", 0, "ibuf overflow", LOG_LEVEL_WARNING);
-			}
-		}
-		else
-		{
-			Handler().LogError(this, "OnRead", n, "abnormal value from recv", LOG_LEVEL_ERROR);
-		}
+		Handler().LogError(this, "OnRead", n, "abnormal value from recv", LOG_LEVEL_ERROR);
 	}
+	
 	//
 	OnRead( buf, n );
 }
@@ -523,17 +345,6 @@ void TcpSocket::OnRead( char *buf, size_t n )
 	{
 		return;
 	}
-	// further processing: socks4
-#ifdef ENABLE_SOCKS4
-	if (Socks4())
-	{
-		bool need_more = false;
-		while (GetInputLength() && !need_more && !CloseAndDelete())
-		{
-			need_more = OnSocks4Read();
-		}
-	}
-#endif
 }
 
 
@@ -559,15 +370,6 @@ void TcpSocket::OnWrite()
 		Handler().LogError(this, "tcp: connect failed", err, StrError(err), LOG_LEVEL_FATAL);
 		Set(false, false); // no more monitoring because connection failed
 
-		// failed
-#ifdef ENABLE_SOCKS4
-		if (Socks4())
-		{
-			// %! leave 'Connecting' flag set?
-			OnSocks4ConnectFailed();
-			return;
-		}
-#endif
 		if (GetConnectionRetry() == -1 ||
 			(GetConnectionRetry() && GetConnectionRetries() < GetConnectionRetry()) )
 		{
@@ -638,60 +440,27 @@ void TcpSocket::OnWrite()
 int TcpSocket::TryWrite(const char *buf, size_t len)
 {
 	int n = 0;
-#ifdef HAVE_OPENSSL
-	if (IsSSL())
+	n = send(GetSocket(), buf, (int)len, MSG_NOSIGNAL);
+	if (n == -1)
 	{
-		n = SSL_write(m_ssl, buf, (int)len);
-		if (n == -1)
-		{
-			int errnr = SSL_get_error(m_ssl, n);
-			if ( errnr != SSL_ERROR_WANT_READ && errnr != SSL_ERROR_WANT_WRITE )
-			{
-				OnDisconnect();
-				SetCloseAndDelete(true);
-				SetFlushBeforeClose(false);
-				SetLost();
-				const char *errbuf = ERR_error_string(errnr, NULL);
-				Handler().LogError(this, "OnWrite/SSL_write", errnr, errbuf, LOG_LEVEL_FATAL);
-			}
-			return 0;
-		}
-		else
-		if (!n)
-		{
+	// normal error codes:
+	// WSAEWOULDBLOCK
+	//       EAGAIN or EWOULDBLOCK
+#ifdef _WIN32
+		if (Errno != WSAEWOULDBLOCK)
+#else
+		if (Errno != EWOULDBLOCK)
+#endif
+		{	
+			Handler().LogError(this, "send", Errno, StrError(Errno), LOG_LEVEL_FATAL);
 			OnDisconnect();
 			SetCloseAndDelete(true);
 			SetFlushBeforeClose(false);
 			SetLost();
-DEB(			int errnr = SSL_get_error(m_ssl, n);
-			const char *errbuf = ERR_error_string(errnr, NULL);
-			fprintf(stderr, "SSL_write() returns 0: %d : %s\n",errnr, errbuf);)
 		}
+		return 0;
 	}
-	else
-#endif // HAVE_OPENSSL
-	{
-		n = send(GetSocket(), buf, (int)len, MSG_NOSIGNAL);
-		if (n == -1)
-		{
-		// normal error codes:
-		// WSAEWOULDBLOCK
-		//       EAGAIN or EWOULDBLOCK
-#ifdef _WIN32
-			if (Errno != WSAEWOULDBLOCK)
-#else
-			if (Errno != EWOULDBLOCK)
-#endif
-			{	
-				Handler().LogError(this, "send", Errno, StrError(Errno), LOG_LEVEL_FATAL);
-				OnDisconnect();
-				SetCloseAndDelete(true);
-				SetFlushBeforeClose(false);
-				SetLost();
-			}
-			return 0;
-		}
-	}
+	
 	if (n > 0)
 	{
 		m_bytes_sent += n;
@@ -804,117 +573,6 @@ TcpSocket::TcpSocket(const TcpSocket& s)
 }
 #ifdef _MSC_VER
 #pragma warning(default:4355)
-#endif
-
-
-#ifdef ENABLE_SOCKS4
-void TcpSocket::OnSocks4Connect()
-{
-	char request[1000];
-	memset(request, 0, sizeof(request));
-	request[0] = 4; // socks v4
-	request[1] = 1; // command code: CONNECT
-	{
-		std::auto_ptr<Ipv4Address> ad = GetClientRemoteAddress();
-		if (ad.get())
-		{
-			struct sockaddr *p0 = (struct sockaddr *)*ad;
-			struct sockaddr_in *p = (struct sockaddr_in *)p0;
-			if (p -> sin_family == AF_INET)
-			{
-				memcpy(request + 2, &p -> sin_port, 2); // nwbo is ok here
-				memcpy(request + 4, &p -> sin_addr, sizeof(struct in_addr));
-			}
-			else
-			{
-				/// \todo warn
-			}
-		}
-		else
-		{
-			/// \todo warn
-		}
-	}
-	strcpy(request + 8, GetSocks4Userid().c_str());
-	size_t length = GetSocks4Userid().size() + 8 + 1;
-	SendBuf(request, length);
-	m_socks4_state = 0;
-}
-
-
-void TcpSocket::OnSocks4ConnectFailed()
-{
-	Handler().LogError(this,"OnSocks4ConnectFailed",0,"connection to socks4 server failed, trying direct connection",LOG_LEVEL_WARNING);
-	if (!Handler().Socks4TryDirect())
-	{
-		SetConnecting(false);
-		SetCloseAndDelete();
-		OnConnectFailed(); // just in case
-	}
-	else
-	{
-		SetRetryClientConnect();
-	}
-}
-
-
-bool TcpSocket::OnSocks4Read()
-{
-	switch (m_socks4_state)
-	{
-	case 0:
-		ibuf.Read(&m_socks4_vn, 1);
-		m_socks4_state = 1;
-		break;
-	case 1:
-		ibuf.Read(&m_socks4_cd, 1);
-		m_socks4_state = 2;
-		break;
-	case 2:
-		if (GetInputLength() > 1)
-		{
-			ibuf.Read( (char *)&m_socks4_dstport, 2);
-			m_socks4_state = 3;
-		}
-		else
-		{
-			return true;
-		}
-		break;
-	case 3:
-		if (GetInputLength() > 3)
-		{
-			ibuf.Read( (char *)&m_socks4_dstip, 4);
-			SetSocks4(false);
-			
-			switch (m_socks4_cd)
-			{
-			case 90:
-				OnConnect();
-				Handler().LogError(this, "OnSocks4Read", 0, "Connection established", LOG_LEVEL_INFO);
-				break;
-			case 91:
-			case 92:
-			case 93:
-				Handler().LogError(this,"OnSocks4Read",m_socks4_cd,"socks4 server reports connect failed",LOG_LEVEL_FATAL);
-				SetConnecting(false);
-				SetCloseAndDelete();
-				OnConnectFailed();
-				break;
-			default:
-				Handler().LogError(this,"OnSocks4Read",m_socks4_cd,"socks4 server unrecognized response",LOG_LEVEL_FATAL);
-				SetCloseAndDelete();
-				break;
-			}
-		}
-		else
-		{
-			return true;
-		}
-		break;
-	}
-	return false;
-}
 #endif
 
 

@@ -43,9 +43,6 @@ namespace SOCKETS_NAMESPACE {
 
 
 class Socket;
-#ifdef ENABLE_RESOLVER
-class ResolvServer;
-#endif
 
 /** Socket container class, event generator. 
 	\ingroup basic */
@@ -96,41 +93,6 @@ public:
 	/** Called by Socket when a socket changes state. */
 	void AddList(SOCKET s,list_t which_one,bool add);
 
-	// Connection pool
-#ifdef ENABLE_POOL
-	/** Find available open connection (used by connection pool). */
-	ISocketHandler::PoolSocket *FindConnection(int type,const std::string& protocol,Ipv4Address&);
-	/** Enable connection pool (by default disabled). */
-	void EnablePool(bool x = true);
-	/** Check pool status. 
-		\return true if connection pool is enabled */
-	bool PoolEnabled();
-#endif // ENABLE_POOL
-
-	// DNS resolve server
-#ifdef ENABLE_RESOLVER
-	/** Enable asynchronous DNS. 
-		\param port Listen port of asynchronous dns server */
-	void EnableResolver(port_t port = 16667);
-	/** Check resolver status.
-		\return true if resolver is enabled */
-	bool ResolverEnabled();
-	/** Queue a dns request.
-		\param host Hostname to be resolved
-		\param port Port number will be echoed in Socket::OnResolved callback */
-	int Resolve(Socket *,const std::string& host,port_t port);
-
-	/** Do a reverse dns lookup. */
-	int Resolve(Socket *,ipaddr_t a);
-
-	/** Get listen port of asynchronous dns server. */
-	port_t GetResolverPort();
-	/** Resolver thread ready for queries. */
-	bool ResolverReady();
-	/** Returns true if the socket is waiting for a resolve event. */
-	bool Resolving(Socket *);
-#endif // ENABLE_RESOLVER
-
 	/** Sanity check of those accursed lists. */
 	void CheckSanity();
 
@@ -158,16 +120,6 @@ private:
 	socket_v m_fds_timeout; ///< checklist timeout
 	socket_v m_fds_retry; ///< checklist retry client connect
 	socket_v m_fds_close; ///< checklist close and delete
-
-#ifdef ENABLE_RESOLVER
-	int m_resolv_id; ///< Resolver id counter
-	ResolvServer *m_resolver; ///< Resolver thread pointer
-	port_t m_resolver_port; ///< Resolver listen port
-	std::map<Socket *, bool> m_resolve_q; ///< resolve queue
-#endif
-#ifdef ENABLE_POOL
-	bool m_b_enable_pool; ///< Connection pool enabled if true
-#endif
 };
 
 

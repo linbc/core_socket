@@ -57,25 +57,6 @@ std::string Utility::l2string(long l)
 	return str;
 }
 
-
-std::string Utility::bigint2string(uint64_t l)
-{
-	std::string str;
-	uint64_t tmp = l;
-	while (tmp)
-	{
-		uint64_t a = tmp % 10;
-		str = (char)(a + 48) + str;
-		tmp /= 10;
-	}
-	if (str.empty())
-	{
-		str = "0";
-	}
-	return str;
-}
-
-
 uint64_t Utility::atoi64(const std::string& str) 
 {
 	uint64_t l = 0;
@@ -428,55 +409,6 @@ bool Utility::reverse(struct sockaddr *sa, socklen_t sa_len, std::string& hostna
 			}
 		}
 		break;
-#ifdef ENABLE_IPV6
-	case AF_INET6:
-		if (flags & NI_NUMERICHOST)
-		{
-			char slask[100]; // l2ip temporary
-			*slask = 0;
-			unsigned int prev = 0;
-			bool skipped = false;
-			bool ok_to_skip = true;
-			{
-				unsigned short addr16[8];
-				struct sockaddr_in6 *sa_in6 = (struct sockaddr_in6 *)sa;
-				memcpy(addr16, &sa_in6 -> sin6_addr, sizeof(addr16));
-				for (size_t i = 0; i < 8; i++)
-				{
-					unsigned short x = ntohs(addr16[i]);
-					if (*slask && (x || !ok_to_skip || prev))
-						strcat(slask,":");
-					if (x || !ok_to_skip)
-					{
-						sprintf(slask + strlen(slask),"%x", x);
-						if (x && skipped)
-							ok_to_skip = false;
-					}
-					else
-					{
-						skipped = true;
-					}
-					prev = x;
-				}
-			}
-			if (!*slask)
-				strcpy(slask, "::");
-			hostname = slask;
-			return true;
-		}
-		else
-		{
-			// %! TODO: ipv6 reverse lookup
-			struct sockaddr_in6 *sa_in = (struct sockaddr_in6 *)sa;
-			struct hostent *h = gethostbyaddr( (const char *)&sa_in -> sin6_addr, sizeof(sa_in -> sin6_addr), AF_INET6);
-			if (h)
-			{
-				hostname = h -> h_name;
-				return true;
-			}
-		}
-		break;
-#endif
 	}
 	return false;
 #else

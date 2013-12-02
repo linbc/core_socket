@@ -45,7 +45,6 @@ class Utility
 {
 public:	
 	static std::string l2string(long l);
-	static std::string bigint2string(uint64_t l);
 	static uint64_t atoi64(const std::string& str);
 	static unsigned int hex2unsigned(const std::string& str);
 	static std::string rfc1738_encode(const std::string& src);

@@ -51,21 +51,13 @@ namespace SOCKETS_NAMESPACE {
 #define DEB(x) 
 //#endif
 
-#if 0
-SocketHandler::SocketHandler()
-m_maxsock(0)
+SocketHandler::SocketHandler():m_maxsock(0)
 ,m_preverror(-1)
 ,m_errcnt(0)
 ,m_tlast(0)
-#ifdef ENABLE_POOL
-,m_b_enable_pool(false)
-#endif
 {
-	FD_ZERO(&m_rfds);
-	FD_ZERO(&m_wfds);
-	FD_ZERO(&m_efds);
+	
 }
-#endif
 
 SocketHandler::~SocketHandler()
 {
@@ -636,17 +628,6 @@ DEB(						fprintf(stderr, " close(3) fd %d GetSocket() %d\n", nn, p -> GetSocket
 						{
 							LogError(p, "Closing", (int)tcp -> GetOutputLength(), "Closing socket while data still left to send", LOG_LEVEL_WARNING);
 						}
-#ifdef ENABLE_POOL
-						if (p -> Retain() && !p -> Lost())
-						{
-							PoolSocket *p2 = new PoolSocket(*this, p);
-							p2 -> SetDeleteByHandler();
-							Add(p2);
-							//
-							p -> SetCloseAndDelete(false); // added - remove from m_fds_close
-						}
-						else
-#endif // ENABLE_POOL
 						{
 							Set(p -> GetSocket(),false,false,false);
 DEB(							fprintf(stderr, "Close() before OnDelete\n");)
@@ -788,42 +769,6 @@ void SocketHandler::SetSocks4Userid(const std::string& id)
 	m_socks4_userid = id;
 }
 #endif
-
-#ifdef ENABLE_POOL
-ISocketHandler::PoolSocket *SocketHandler::FindConnection(int type,const std::string& protocol,Ipv4Address& ad)
-{
-	for (socket_m::iterator it = m_sockets.begin(); it != m_sockets.end() && !m_sockets.empty(); it++)
-	{
-		PoolSocket *pools = dynamic_cast<PoolSocket *>(it -> second);
-		if (pools)
-		{
-			if (pools -> GetSocketType() == type &&
-			    pools -> GetSocketProtocol() == protocol &&
-// %!			    pools -> GetClientRemoteAddress() &&
-			    *pools -> GetClientRemoteAddress() == ad)
-			{
-				m_sockets.erase(it);
-				pools -> SetRetain(); // avoid Close in Socket destructor
-				return pools; // Caller is responsible that this socket is deleted
-			}
-		}
-	}
-	return NULL;
-}
-
-
-void SocketHandler::EnablePool(bool x)
-{
-	m_b_enable_pool = x;
-}
-
-
-bool SocketHandler::PoolEnabled() 
-{ 
-	return m_b_enable_pool; 
-}
-#endif
-
 
 void SocketHandler::Remove(Socket *p)
 {
