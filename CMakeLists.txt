@@ -1,4 +1,4 @@
-project(core_obj)
+project(core_socket)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS On)
 cmake_minimum_required(VERSION 2.8)
@@ -40,6 +40,17 @@ endif()
 
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/out_libs)
+
+include_directories(
+  ${CMAKE_BINARY_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_SOURCE_DIR}/include
+  ${CMAKE_BINARY_DIR}/deps
+  ${CMAKE_BINARY_DIR}/deps/gtest/include
+)
+LINK_DIRECTORIES(
+  ${CMAKE_BINARY_DIR}/deps/lib
+)
 
 add_subdirectory(src)
 add_subdirectory(test)
