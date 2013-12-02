@@ -178,18 +178,18 @@ bool TcpSocket::Open(in6_addr ip,port_t port,bool skip_socks)
 #endif
 
 
-bool TcpSocket::Open(SocketAddress& ad,bool skip_socks)
+bool TcpSocket::Open(Ipv4Address& ad,bool skip_socks)
 {
 	Ipv4Address bind_ad("0.0.0.0", 0);
 	return Open(ad, bind_ad, skip_socks);
 }
 
 
-bool TcpSocket::Open(SocketAddress& ad,SocketAddress& bind_ad,bool skip_socks)
+bool TcpSocket::Open(Ipv4Address& ad,Ipv4Address& bind_ad,bool skip_socks)
 {
 	if (!ad.IsValid())
 	{
-		Handler().LogError(this, "Open", 0, "Invalid SocketAddress", LOG_LEVEL_FATAL);
+		Handler().LogError(this, "Open", 0, "Invalid Ipv4Address", LOG_LEVEL_FATAL);
 		SetCloseAndDelete();
 		return false;
 	}
@@ -338,87 +338,17 @@ bool TcpSocket::Open(const std::string &host,port_t port)
 	}
 #endif
 #endif
-#ifdef ENABLE_RESOLVER
-	if (!Handler().ResolverEnabled() || Utility::isipv4(host) )
-	{
-#endif
-		ipaddr_t l;
-		if (!Utility::u2ip(host,l))
-		{
-			SetCloseAndDelete();
-			return false;
-		}
-		Ipv4Address ad(l, port);
-		Ipv4Address local;
-		return Open(ad, local);
-#ifdef ENABLE_RESOLVER
-	}
-	// resolve using async resolver thread
-	m_resolver_id = Resolve(host, port);
-	return true;
-#endif
-}
 
-
-#ifdef ENABLE_RESOLVER
-void TcpSocket::OnResolved(int id,ipaddr_t a,port_t port)
-{
-DEB(	fprintf(stderr, "TcpSocket::OnResolved id %d addr %x port %d\n", id, a, port);)
-	if (id == m_resolver_id)
+	ipaddr_t l;
+	if (!Utility::u2ip(host,l))
 	{
-		if (a && port)
-		{
-			Ipv4Address ad(a, port);
-			Ipv4Address local;
-			if (Open(ad, local))
-			{
-				if (!Handler().Valid(this))
-				{
-					Handler().Add(this);
-				}
-			}
-		}
-		else
-		{
-			Handler().LogError(this, "OnResolved", 0, "Resolver failed", LOG_LEVEL_FATAL);
-			SetCloseAndDelete();
-		}
-	}
-	else
-	{
-		Handler().LogError(this, "OnResolved", id, "Resolver returned wrong job id", LOG_LEVEL_FATAL);
 		SetCloseAndDelete();
+		return false;
 	}
+	Ipv4Address ad(l, port);
+	Ipv4Address local;
+	return Open(ad, local);
 }
-
-
-#ifdef ENABLE_IPV6
-void TcpSocket::OnResolved(int id,in6_addr& a,port_t port)
-{
-	if (id == m_resolver_id)
-	{
-		Ipv6Address ad(a, port);
-		if (ad.IsValid())
-		{
-			Ipv6Address local;
-			if (Open(ad, local))
-			{
-				if (!Handler().Valid(this))
-				{
-					Handler().Add(this);
-				}
-			}
-		}
-	}
-	else
-	{
-		Handler().LogError(this, "OnResolved", id, "Resolver returned wrong job id", LOG_LEVEL_FATAL);
-		SetCloseAndDelete();
-	}
-}
-#endif
-#endif
-
 
 void TcpSocket::OnRead()
 {
@@ -885,7 +815,7 @@ void TcpSocket::OnSocks4Connect()
 	request[0] = 4; // socks v4
 	request[1] = 1; // command code: CONNECT
 	{
-		std::auto_ptr<SocketAddress> ad = GetClientRemoteAddress();
+		std::auto_ptr<Ipv4Address> ad = GetClientRemoteAddress();
 		if (ad.get())
 		{
 			struct sockaddr *p0 = (struct sockaddr *)*ad;

@@ -99,7 +99,7 @@ public:
 	// Connection pool
 #ifdef ENABLE_POOL
 	/** Find available open connection (used by connection pool). */
-	ISocketHandler::PoolSocket *FindConnection(int type,const std::string& protocol,SocketAddress&);
+	ISocketHandler::PoolSocket *FindConnection(int type,const std::string& protocol,Ipv4Address&);
 	/** Enable connection pool (by default disabled). */
 	void EnablePool(bool x = true);
 	/** Check pool status. 

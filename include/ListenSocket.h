@@ -100,7 +100,7 @@ public:
 		return Bind(ad, depth);		
 	}
 
-	int Bind(SocketAddress& ad,int depth) {
+	int Bind(Ipv4Address& ad,int depth) {
 		return Bind(ad, "tcp", depth);
 	}
 
@@ -164,7 +164,7 @@ public:
 		\param ad Interface address
 		\param protocol Network protocol
 		\param depth Listen queue depth */
-	int Bind(SocketAddress& ad,const std::string& protocol,int depth) {
+	int Bind(Ipv4Address& ad,const std::string& protocol,int depth) {
 		SOCKET s;
 		if ( (s = CreateSocket(ad.GetFamily(), SOCK_STREAM, protocol)) == INVALID_SOCKET)
 		{

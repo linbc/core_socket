@@ -36,11 +36,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <errno.h>
 
 #include "SocketHandler.h"
-#include "ResolvSocket.h"
-#include "ResolvServer.h"
 #include "TcpSocket.h"
 #include "Utility.h"
-#include "SocketAddress.h"
+#include "Ipv4Address.h"
 
 #ifdef SOCKETS_NAMESPACE
 namespace SOCKETS_NAMESPACE {
@@ -59,10 +57,6 @@ m_maxsock(0)
 ,m_preverror(-1)
 ,m_errcnt(0)
 ,m_tlast(0)
-#ifdef ENABLE_RESOLVER
-,m_resolv_id(0)
-,m_resolver(NULL)
-#endif
 #ifdef ENABLE_POOL
 ,m_b_enable_pool(false)
 #endif
@@ -75,51 +69,37 @@ m_maxsock(0)
 
 SocketHandler::~SocketHandler()
 {
-#ifdef ENABLE_RESOLVER
-	if (m_resolver)
+	while (m_sockets.size())
 	{
-		m_resolver -> Quit();
-	}
-#endif
-	{
-		while (m_sockets.size())
-		{
 DEB(			fprintf(stderr, "Emptying sockets list in SocketHandler destructor, %d instances\n", (int)m_sockets.size());)
-			socket_m::iterator it = m_sockets.begin();
-			Socket *p = it -> second;
-			if (p)
-			{
+		socket_m::iterator it = m_sockets.begin();
+		Socket *p = it -> second;
+		if (p)
+		{
 DEB(				fprintf(stderr, "  fd %d\n", p -> GetSocket());)
-				p -> Close();
+			p -> Close();
 DEB(				fprintf(stderr, "  fd closed %d\n", p -> GetSocket());)
 //				p -> OnDelete(); // hey, I turn this back on. what's the worst that could happen??!!
-				// MinionSocket breaks, calling MinderHandler methods in OnDelete -
-				// MinderHandler is already gone when that happens...
+			// MinionSocket breaks, calling MinderHandler methods in OnDelete -
+			// MinderHandler is already gone when that happens...
 
-				// only delete socket when controlled
-				// ie master sockethandler can delete non-detached sockets
-				// and a slave sockethandler can only delete a detach socket
-				if (p -> DeleteByHandler())
-				{
-					p -> SetErasedByHandler();
-					delete p;
-				}
-				m_sockets.erase(it);
-			}
-			else
+			// only delete socket when controlled
+			// ie master sockethandler can delete non-detached sockets
+			// and a slave sockethandler can only delete a detach socket
+			if (p -> DeleteByHandler())
 			{
-				m_sockets.erase(it);
+				p -> SetErasedByHandler();
+				delete p;
 			}
-DEB(			fprintf(stderr, "next\n");)
+			m_sockets.erase(it);
 		}
+		else
+		{
+			m_sockets.erase(it);
+		}
+DEB(			fprintf(stderr, "next\n");)
+	}
 DEB(		fprintf(stderr, "/Emptying sockets list in SocketHandler destructor, %d instances\n", (int)m_sockets.size());)
-	}
-#ifdef ENABLE_RESOLVER
-	if (m_resolver)
-	{
-		delete m_resolver;
-	}
-#endif
 }
 
 void SocketHandler::LogError(Socket *p,const std::string& user_text,int err,const std::string& sys_err,loglevel_t t)
@@ -552,7 +532,7 @@ DEB(			fprintf(stderr, "Checking %d socket(s) for timeout\n", tmp.size());)
 					tcp -> SetRetryClientConnect(false);
 DEB(					fprintf(stderr, "Close() before retry client connect\n");)
 					p -> Close(); // removes from m_fds_retry
-					std::auto_ptr<SocketAddress> ad = p -> GetClientRemoteAddress();
+					std::auto_ptr<Ipv4Address> ad = p -> GetClientRemoteAddress();
 					if (ad.get())
 					{
 						tcp -> Open(*ad);
@@ -634,7 +614,7 @@ DEB(						fprintf(stderr, " close(2) fd %d\n", nn);)
 DEB(						fprintf(stderr, "Close() before reconnect\n");)
 						p -> Close(); // dispose of old file descriptor (Open creates a new)
 						p -> OnDisconnect();
-						std::auto_ptr<SocketAddress> ad = p -> GetClientRemoteAddress();
+						std::auto_ptr<Ipv4Address> ad = p -> GetClientRemoteAddress();
 						if (ad.get())
 						{
 							tcp -> Open(*ad);
@@ -809,150 +789,8 @@ void SocketHandler::SetSocks4Userid(const std::string& id)
 }
 #endif
 
-
-#ifdef ENABLE_RESOLVER
-int SocketHandler::Resolve(Socket *p,const std::string& host,port_t port)
-{
-	// check cache
-	ResolvSocket *resolv = new ResolvSocket(*this, p, host, port);
-	resolv -> SetId(++m_resolv_id);
-	resolv -> SetDeleteByHandler();
-	ipaddr_t local;
-	Utility::u2ip("127.0.0.1", local);
-	if (!resolv -> Open(local, m_resolver_port))
-	{
-		LogError(resolv, "Resolve", -1, "Can't connect to local resolve server", LOG_LEVEL_FATAL);
-	}
-	Add(resolv);
-	m_resolve_q[p] = true;
-DEB(	fprintf(stderr, " *** Resolve '%s:%d' id#%d  m_resolve_q size: %d  p: %p\n", host.c_str(), port, resolv -> GetId(), m_resolve_q.size(), p);)
-	return resolv -> GetId();
-}
-
-
-#ifdef ENABLE_IPV6
-int SocketHandler::Resolve6(Socket *p,const std::string& host,port_t port)
-{
-	// check cache
-	ResolvSocket *resolv = new ResolvSocket(*this, p, host, port, true);
-	resolv -> SetId(++m_resolv_id);
-	resolv -> SetDeleteByHandler();
-	ipaddr_t local;
-	Utility::u2ip("127.0.0.1", local);
-	if (!resolv -> Open(local, m_resolver_port))
-	{
-		LogError(resolv, "Resolve", -1, "Can't connect to local resolve server", LOG_LEVEL_FATAL);
-	}
-	Add(resolv);
-	m_resolve_q[p] = true;
-	return resolv -> GetId();
-}
-#endif
-
-
-int SocketHandler::Resolve(Socket *p,ipaddr_t a)
-{
-	// check cache
-	ResolvSocket *resolv = new ResolvSocket(*this, p, a);
-	resolv -> SetId(++m_resolv_id);
-	resolv -> SetDeleteByHandler();
-	ipaddr_t local;
-	Utility::u2ip("127.0.0.1", local);
-	if (!resolv -> Open(local, m_resolver_port))
-	{
-		LogError(resolv, "Resolve", -1, "Can't connect to local resolve server", LOG_LEVEL_FATAL);
-	}
-	Add(resolv);
-	m_resolve_q[p] = true;
-	return resolv -> GetId();
-}
-
-
-#ifdef ENABLE_IPV6
-int SocketHandler::Resolve(Socket *p,in6_addr& a)
-{
-	// check cache
-	ResolvSocket *resolv = new ResolvSocket(*this, p, a);
-	resolv -> SetId(++m_resolv_id);
-	resolv -> SetDeleteByHandler();
-	ipaddr_t local;
-	Utility::u2ip("127.0.0.1", local);
-	if (!resolv -> Open(local, m_resolver_port))
-	{
-		LogError(resolv, "Resolve", -1, "Can't connect to local resolve server", LOG_LEVEL_FATAL);
-	}
-	Add(resolv);
-	m_resolve_q[p] = true;
-	return resolv -> GetId();
-}
-#endif
-
-
-void SocketHandler::EnableResolver(port_t port)
-{
-	if (!m_resolver)
-	{
-		m_resolver_port = port;
-		m_resolver = new ResolvServer(port);
-	}
-}
-
-
-bool SocketHandler::ResolverReady()
-{
-	return m_resolver ? m_resolver -> Ready() : false;
-}
-#endif // ENABLE_RESOLVER
-
-
-#ifdef ENABLE_SOCKS4
-void SocketHandler::SetSocks4TryDirect(bool x)
-{
-	m_bTryDirect = x;
-}
-
-
-ipaddr_t SocketHandler::GetSocks4Host()
-{
-	return m_socks4_host;
-}
-
-
-port_t SocketHandler::GetSocks4Port()
-{
-	return m_socks4_port;
-}
-
-
-const std::string& SocketHandler::GetSocks4Userid()
-{
-	return m_socks4_userid;
-}
-
-
-bool SocketHandler::Socks4TryDirect()
-{
-	return m_bTryDirect;
-}
-#endif
-
-
-#ifdef ENABLE_RESOLVER
-bool SocketHandler::ResolverEnabled() 
-{ 
-	return m_resolver ? true : false; 
-}
-
-
-port_t SocketHandler::GetResolverPort() 
-{ 
-	return m_resolver_port; 
-}
-#endif // ENABLE_RESOLVER
-
-
 #ifdef ENABLE_POOL
-ISocketHandler::PoolSocket *SocketHandler::FindConnection(int type,const std::string& protocol,SocketAddress& ad)
+ISocketHandler::PoolSocket *SocketHandler::FindConnection(int type,const std::string& protocol,Ipv4Address& ad)
 {
 	for (socket_m::iterator it = m_sockets.begin(); it != m_sockets.end() && !m_sockets.empty(); it++)
 	{
@@ -989,11 +827,6 @@ bool SocketHandler::PoolEnabled()
 
 void SocketHandler::Remove(Socket *p)
 {
-#ifdef ENABLE_RESOLVER
-	std::map<Socket *, bool>::iterator it4 = m_resolve_q.find(p);
-	if (it4 != m_resolve_q.end())
-		m_resolve_q.erase(it4);
-#endif
 	if (p -> ErasedByHandler())
 	{
 		return;

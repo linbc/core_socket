@@ -43,7 +43,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ISocketHandler.h"
 #include "Utility.h"
 
-#include "SocketAddress.h"
+#include "Ipv4Address.h"
 #include "SocketHandler.h"
 #ifdef ENABLE_EXCEPTIONS
 #include "Exception.h"
@@ -253,13 +253,13 @@ bool Socket::CloseAndDelete()
 }
 
 
-void Socket::SetRemoteAddress(SocketAddress& ad) //struct sockaddr* sa, socklen_t l)
+void Socket::SetRemoteAddress(Ipv4Address& ad) //struct sockaddr* sa, socklen_t l)
 {
 	m_remote_address = ad.GetCopy();
 }
 
 
-std::auto_ptr<SocketAddress> Socket::GetRemoteSocketAddress()
+std::auto_ptr<Ipv4Address> Socket::GetRemoteIpv4Address()
 {
 	return m_remote_address -> GetCopy();
 }
@@ -516,7 +516,7 @@ time_t Socket::TimeSinceClose()
 }
 
 
-void Socket::SetClientRemoteAddress(SocketAddress& ad)
+void Socket::SetClientRemoteAddress(Ipv4Address& ad)
 {
 	if (!ad.IsValid())
 	{
@@ -526,7 +526,7 @@ void Socket::SetClientRemoteAddress(SocketAddress& ad)
 }
 
 
-std::auto_ptr<SocketAddress> Socket::GetClientRemoteAddress()
+std::auto_ptr<Ipv4Address> Socket::GetClientRemoteAddress()
 {
 	if (!m_client_remote_address.get())
 	{
@@ -551,14 +551,11 @@ uint64_t Socket::GetBytesReceived(bool)
 void Socket::CopyConnection(Socket *sock)
 {
 	Attach( sock -> GetSocket() );
-#ifdef ENABLE_IPV6
-	SetIpv6( sock -> IsIpv6() );
-#endif
 	SetSocketType( sock -> GetSocketType() );
 	SetSocketProtocol( sock -> GetSocketProtocol() );
 
 	SetClientRemoteAddress( *sock -> GetClientRemoteAddress() );
-	SetRemoteAddress( *sock -> GetRemoteSocketAddress() );
+	SetRemoteAddress( *sock -> GetRemoteIpv4Address() );
 }
 
 
@@ -605,33 +602,6 @@ bool Socket::Retain()
 
 
 #endif // ENABLE_POOL
-
-
-#ifdef ENABLE_RESOLVER
-int Socket::Resolve(const std::string& host,port_t port)
-{
-	return Handler().Resolve(this, host, port);
-}
-
-int Socket::Resolve(ipaddr_t a)
-{
-	return Handler().Resolve(this, a);
-}
-
-void Socket::OnResolved(int,ipaddr_t,port_t)
-{
-}
-
-void Socket::OnReverseResolved(int,const std::string&)
-{
-}
-
-
-void Socket::OnResolveFailed(int)
-{
-}
-#endif // ENABLE_RESOLVER
-
 
 /* IP options */
 

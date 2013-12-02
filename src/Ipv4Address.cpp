@@ -177,7 +177,7 @@ bool Ipv4Address::IsValid()
 }
 
 
-bool Ipv4Address::operator==(SocketAddress& a)
+bool Ipv4Address::operator==(Ipv4Address& a)
 {
 	if (a.GetFamily() != GetFamily())
 		return false;
@@ -193,9 +193,9 @@ bool Ipv4Address::operator==(SocketAddress& a)
 }
 
 
-std::auto_ptr<SocketAddress> Ipv4Address::GetCopy()
+std::auto_ptr<Ipv4Address> Ipv4Address::GetCopy()
 {
-	return std::auto_ptr<SocketAddress>(new Ipv4Address(m_addr));
+	return std::auto_ptr<Ipv4Address>(new Ipv4Address(m_addr));
 }
 
 

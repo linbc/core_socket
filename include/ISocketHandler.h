@@ -50,7 +50,7 @@ typedef enum {
 	LIST_CLOSE
 } list_t;
 
-class SocketAddress;
+class Ipv4Address;
 class Mutex;
 
 
@@ -125,38 +125,13 @@ public:
 	// -------------------------------------------------------------------------
 #ifdef ENABLE_POOL
 	/** Find available open connection (used by connection pool). */
-	virtual ISocketHandler::PoolSocket *FindConnection(int type,const std::string& protocol,SocketAddress&) = 0;
+	virtual ISocketHandler::PoolSocket *FindConnection(int type,const std::string& protocol,Ipv4Address&) = 0;
 	/** Enable connection pool (by default disabled). */
 	virtual void EnablePool(bool = true) = 0;
 	/** Check pool status. 
 		\return true if connection pool is enabled */
 	virtual bool PoolEnabled() = 0;
 #endif // ENABLE_POOL
-	// -------------------------------------------------------------------------
-	// DNS resolve server
-	// -------------------------------------------------------------------------
-#ifdef ENABLE_RESOLVER
-	/** Enable asynchronous DNS. 
-		\param port Listen port of asynchronous dns server */
-	virtual void EnableResolver(port_t = 16667) = 0;
-	/** Check resolver status.
-		\return true if resolver is enabled */
-	virtual bool ResolverEnabled() = 0;
-	/** Queue a dns request.
-		\param host Hostname to be resolved
-		\param port Port number will be echoed in Socket::OnResolved callback */
-	virtual int Resolve(Socket *,const std::string& host,port_t port) = 0;
-
-	/** Do a reverse dns lookup. */
-	virtual int Resolve(Socket *,ipaddr_t a) = 0;
-
-	/** Get listen port of asynchronous dns server. */
-	virtual port_t GetResolverPort() = 0;
-	/** Resolver thread ready for queries. */
-	virtual bool ResolverReady() = 0;
-	/** Returns true if socket waiting for a resolve event. */
-	virtual bool Resolving(Socket *) = 0;
-#endif // ENABLE_RESOLVER
 };
 
 

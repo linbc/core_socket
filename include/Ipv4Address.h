@@ -23,8 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef _SOCKETS_Ipv4Address_H
 #define _SOCKETS_Ipv4Address_H
 
-#include "sockets-config.h"
-#include "SocketAddress.h"
+#include "socket_include.h"
 
 
 #ifdef SOCKETS_NAMESPACE
@@ -34,7 +33,7 @@ namespace SOCKETS_NAMESPACE {
 
 /* Ipv4 address implementation.
 	\ingroup basic */
-class Ipv4Address : public SocketAddress
+class Ipv4Address
 {
 public:
 	/** Create empty Ipv4 address structure.
@@ -55,11 +54,11 @@ public:
 	Ipv4Address(struct sockaddr_in&);
 	~Ipv4Address();
 
-	// SocketAddress implementation
+	// Ipv4Address implementation
 
 	operator struct sockaddr *();
 	operator socklen_t();
-	bool operator==(SocketAddress&);
+	bool operator==(Ipv4Address&);
 
 	void SetPort(port_t port);
 	port_t GetPort();
@@ -68,7 +67,7 @@ public:
 	int GetFamily();
 
 	bool IsValid();
-	std::auto_ptr<SocketAddress> GetCopy();
+	std::auto_ptr<Ipv4Address> GetCopy();
 
 	/** Convert address struct to text. */
 	std::string Convert(bool include_port = false);

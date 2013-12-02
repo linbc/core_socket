@@ -298,6 +298,7 @@ namespace SOCKETS_NAMESPACE {
 #include <map>
 #include <vector>
 #include <list>
+#include <string>
 
 /** error level enum. */
 typedef enum

@@ -31,7 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define _SOCKETS_Socket_H
 #include "socket_include.h"
 #include <time.h>
-#include "SocketAddress.h"
+#include "Ipv4Address.h"
 
 #ifdef SOCKETS_NAMESPACE
 namespace SOCKETS_NAMESPACE {
@@ -39,7 +39,7 @@ namespace SOCKETS_NAMESPACE {
 
 
 class ISocketHandler;
-class SocketAddress;
+class Ipv4Address;
 
 
 /** \defgroup basic Basic sockets */
@@ -164,10 +164,10 @@ public:
 	time_t Uptime();
 
 	/** Set address/port of last connect() call. */
-	void SetClientRemoteAddress(SocketAddress&);
+	void SetClientRemoteAddress(Ipv4Address&);
 
 	/** Get address/port of last connect() call. */
-	std::auto_ptr<SocketAddress> GetClientRemoteAddress();
+	std::auto_ptr<Ipv4Address> GetClientRemoteAddress();
 
 	/** Common interface for SendBuf used by Tcp and Udp sockets. */
 	virtual void SendBuf(const char *,size_t,int = 0);
@@ -190,7 +190,7 @@ public:
 	bool Timeout(time_t tnow);
 
 	/** Used by ListenSocket. ipv4 and ipv6 */
-	void SetRemoteAddress(SocketAddress&);
+	void SetRemoteAddress(Ipv4Address&);
 
 	/** \name Event callbacks */
 	//@{
@@ -281,7 +281,7 @@ public:
 	/** \name Information about remote connection */
 	//@{
 	/** Returns address of remote end. */
-	std::auto_ptr<SocketAddress> GetRemoteSocketAddress();
+	std::auto_ptr<Ipv4Address> GetRemoteIpv4Address();
 	/** Returns address of remote end: ipv4. */
 	ipaddr_t GetRemoteIP4();
 	/** Returns remote port number: ipv4 and ipv6. */
@@ -489,8 +489,8 @@ private:
 	bool m_connected; ///< Socket is connected (tcp/udp)
 	bool m_b_erased_by_handler; ///< Set by handler before delete
 	time_t m_tClose; ///< Time in seconds when ordered to close
-	std::auto_ptr<SocketAddress> m_client_remote_address; ///< Address of last connect()
-	std::auto_ptr<SocketAddress> m_remote_address; ///< Remote end address
+	std::auto_ptr<Ipv4Address> m_client_remote_address; ///< Address of last connect()
+	std::auto_ptr<Ipv4Address> m_remote_address; ///< Remote end address
 	time_t m_timeout_start; ///< Set by SetTimeout
 	time_t m_timeout_limit; ///< Defined by SetTimeout
 	bool m_bLost; ///< connection lost

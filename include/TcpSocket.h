@@ -46,7 +46,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 namespace SOCKETS_NAMESPACE {
 #endif
 
-class SocketAddress;
+class Ipv4Address;
 
 
 /** Socket implementation for TCP. 
@@ -157,8 +157,8 @@ public:
 	bool Open(in6_addr ip,port_t port,bool skip_socks = false);
 #endif
 #endif
-	bool Open(SocketAddress&,bool skip_socks = false);
-	bool Open(SocketAddress&,SocketAddress& bind_address,bool skip_socks = false);
+	bool Open(Ipv4Address&,bool skip_socks = false);
+	bool Open(Ipv4Address&,Ipv4Address& bind_address,bool skip_socks = false);
 	/** Open connection. 
 		\param host Hostname
 		\param port Port number */
