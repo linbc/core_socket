@@ -29,7 +29,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #ifndef _SOCKETS_socket_include_H
 #define _SOCKETS_socket_include_H
-#include "sockets-config.h"
+//#include "sockets-config.h"
+
+// define MACOSX for internal socket library checks
+#if defined(__APPLE__) && defined(__MACH__) && !defined(MACOSX)
+#define MACOSX
+#endif
 
 #ifdef _MSC_VER
 #pragma warning(disable:4514)
@@ -77,9 +82,7 @@ typedef int SOCKET;
 #define Errno errno
 #define StrError strerror
 
-#ifdef SOCKETS_NAMESPACE
-namespace SOCKETS_NAMESPACE {
-#endif
+namespace core_socket{
 
 
 // WIN32 adapt
@@ -91,9 +94,7 @@ namespace SOCKETS_NAMESPACE {
 #define INADDR_NONE ((unsigned long) -1)
 #endif // INADDR_NONE
 
-#ifdef SOCKETS_NAMESPACE
 }
-#endif
 
 #endif // !_WIN32
 
@@ -112,14 +113,10 @@ namespace SOCKETS_NAMESPACE {
 // ----------------------------------------
 // Solaris
 typedef unsigned short port_t;
-#ifdef SOCKETS_NAMESPACE
-namespace SOCKETS_NAMESPACE {
-#endif
+namespace core_socket{
 // no defs
 
-#ifdef SOCKETS_NAMESPACE
 }
-#endif
 
 #define s6_addr16 _S6_un._S6_u8
 #define MSG_NOSIGNAL 0
@@ -135,14 +132,11 @@ namespace SOCKETS_NAMESPACE {
 #  include <netinet/in.h>
 typedef	in_addr_t ipaddr_t;
 typedef	in_port_t port_t;
-#ifdef SOCKETS_NAMESPACE
-namespace SOCKETS_NAMESPACE {
-#endif
+
+namespace core_socket{
 // no defs
 
-#ifdef SOCKETS_NAMESPACE
 }
-#endif
 
 #  define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
 #  define IPV6_DROP_MEMBERSHIP IPV6_LEAVE_GROUP
@@ -167,14 +161,10 @@ typedef unsigned short port_t;
 #include <mach/port.h>
 #endif // __DARWIN_UNIX03
 typedef unsigned long ipaddr_t;
-#ifdef SOCKETS_NAMESPACE
-namespace SOCKETS_NAMESPACE {
-#endif
+namespace core_socket{
 // no defs
 
-#ifdef SOCKETS_NAMESPACE
 }
-#endif
 
 #define s6_addr16 __u6_addr.__u6_addr16
 #define MSG_NOSIGNAL 0 // oops - thanks Derek
@@ -192,14 +182,10 @@ namespace SOCKETS_NAMESPACE {
 typedef unsigned long ipaddr_t;
 typedef unsigned short port_t;
 typedef int socklen_t;
-#ifdef SOCKETS_NAMESPACE
-namespace SOCKETS_NAMESPACE {
-#endif
+namespace core_socket{
 // no defs
 
-#ifdef SOCKETS_NAMESPACE
 }
-#endif
 
 // 1.8.6: define FD_SETSIZE to something bigger than 64 if there are a lot of
 // simultaneous connections (must be done before including winsock.h)
@@ -227,10 +213,7 @@ namespace SOCKETS_NAMESPACE {
 #define Errno WSAGetLastError()
 const char *StrError(int x);
 
-#ifdef SOCKETS_NAMESPACE
-namespace SOCKETS_NAMESPACE {
-#endif
-
+namespace core_socket{
 
 // class WSAInitializer is a part of the Socket class (on win32)
 // as a static instance - so whenever an application uses a Socket,
@@ -251,37 +234,25 @@ private:
 	WSADATA m_wsadata;
 };
 
-#ifdef SOCKETS_NAMESPACE
 }
-#endif
 
 #else 
 // ----------------------------------------
 // LINUX 
 typedef unsigned long ipaddr_t;
 typedef unsigned short port_t;
-#ifdef SOCKETS_NAMESPACE
-namespace SOCKETS_NAMESPACE {
-#endif
+namespace core_socket{
 // no defs
 
-#ifdef SOCKETS_NAMESPACE
 }
-#endif
 
 
 #endif
 
-#ifdef SOCKETS_NAMESPACE
-namespace SOCKETS_NAMESPACE {
-#endif
+namespace core_socket{
 	/** List type containing file descriptors. */
 	typedef std::list<SOCKET> socket_v;
-
-
-#ifdef SOCKETS_NAMESPACE
 }
-#endif
 
 
 // getaddrinfo / getnameinfo replacements
@@ -299,6 +270,10 @@ namespace SOCKETS_NAMESPACE {
 #include <vector>
 #include <list>
 #include <string>
+#include <functional>
+#include <algorithm>
+
+using std::string;
 
 /** error level enum. */
 typedef enum
