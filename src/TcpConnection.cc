@@ -25,7 +25,7 @@ TcpConnection::~TcpConnection()
 
 bool TcpConnection::OnRead()
 {	
-	//»º³åÇøµÄ
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	int n = recv(fd_,tmp_buf_+tmp_buf_count_,TCP_BUFSIZE_READ-tmp_buf_count_, MSG_NOSIGNAL);
 	if(n > 0){		
 		tmp_buf_count_ += n;		
@@ -42,7 +42,7 @@ bool TcpConnection::OnRead()
 		}
 		mgr_->Log(this, "read", Errno, StrError(Errno), LOG_LEVEL_FATAL);		
 	}else if(n == 0){
-		// ÕâÀï±íÊ¾¶Ô¶ËµÄsocketÒÑÕý³£¹Ø±Õ.
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½Ô¶Ëµï¿½socketï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø±ï¿½.
 		return false;
 	}else{
 		mgr_->Log(this, "OnRead", n, "abnormal value from recv", LOG_LEVEL_ERROR);		
@@ -69,7 +69,7 @@ bool TcpConnection::OnWrite()
 				return false;
 			}
 		}else if(n == 0){
-			//Á¬½Ó¹Ø±Õ
+			//ï¿½ï¿½ï¿½Ó¹Ø±ï¿½
 			return false;
 		}
 		last = send_buf_.add_read(n);
@@ -132,12 +132,12 @@ bool TcpConnection::SetNonblocking(bool bNb)
 
 void TcpConnection::ReadPacket()
 {
-	//Ã»¶«Î÷¿É¶ÁÁË		;
-	//¿ÉÒÔ½â°üÁË
+	//Ã»ï¿½ï¿½ï¿½ï¿½ï¿½É¶ï¿½ï¿½ï¿½		;
+	//ï¿½ï¿½ï¿½Ô½ï¿½ï¿½ï¿½ï¿½ï¿½
 	if (tmp_buf_count_ >= 2){			
-		//ÅÐ¶ÏÒ»ÏÂ»º³åÇøÒª²»ÒªÖØ¸ã,Ö»ÓÐÁ½ÖÖÇé¿ö,0»òÕßÊÇ1
+		//ï¿½Ð¶ï¿½Ò»ï¿½Â»ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½Òªï¿½Ø¸ï¿½,Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½,0ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1
 		if(ComplatePacket((uint8_t*)tmp_buf_,tmp_buf_count_)){
-			//Èç¹û»¹Ê£ÏÂÒ»¸ö×Ö½Ú£¬ÒÆ¶¯µ½»º³åÇøµÄÇ°Ãæ
+			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê£ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Ö½Ú£ï¿½ï¿½Æ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½
 			tmp_buf_[0] = tmp_buf_[tmp_buf_count_-1];
 			tmp_buf_count_ = 0;
 		}
@@ -146,27 +146,26 @@ void TcpConnection::ReadPacket()
 
 int TcpConnection::ComplatePacket(uint8_t *buf,int len)
 {
-	//ÓÃÁ½¸ö×Ö½Ú¶¨Òå°ü³¤
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö½Ú¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	const int PACKET_HEAD_SIZE = sizeof(short);
 
 	int total = 0;
-	//Ê£ÏÂµÄ´óÓÚÖ¸Ê¾°ü³¤µÄ¾Í¿ÉÒÔ¶Á
-	while (len > PACKET_HEAD_SIZE)
-	{
+	//Ê£ï¿½ÂµÄ´ï¿½ï¿½ï¿½Ö¸Ê¾ï¿½ï¿½ï¿½ï¿½ï¿½Ä¾Í¿ï¿½ï¿½Ô¶ï¿½
+	while (len > PACKET_HEAD_SIZE){
 		if(!cur_pkt_)
 			cur_pkt_ = new PacketType;
 
-		//Î´¶ÁÈ¡°üÍ·
+		//Î´ï¿½ï¿½È¡ï¿½ï¿½Í·
 		if(cur_pkt_->length() < PACKET_HEAD_SIZE){
-			//Èç¹û´«ÈëµÄÊý¾Ý»¹²»¹»Á½¸ö×Ö½Ú¶ÁÈ¡°üÍ·,Èç¹û¾Í
+			//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö½Ú¶ï¿½È¡ï¿½ï¿½Í·,ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			if(len < PACKET_HEAD_SIZE)
 				return 0;
 			else {
-				//Ð´ÔÚÄ©Î²
+				//Ð´ï¿½ï¿½Ä©Î²
 				cur_pkt_->position(cur_pkt_->length());
 				cur_pkt_->writeBytes(buf,PACKET_HEAD_SIZE);				
 
-				//»º³åÇøÆ«ÒÆ
+				//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½
 				total += PACKET_HEAD_SIZE;				
 				buf += PACKET_HEAD_SIZE;
 				len -= PACKET_HEAD_SIZE;
@@ -174,29 +173,29 @@ int TcpConnection::ComplatePacket(uint8_t *buf,int len)
 		}
 
 		int packet_size = cur_pkt_->readUnsignedShort(0);
-		//Î´¶ÁÈ¡Õû¸öÍêÕû°üÖ®Ç°ÖÐ¼ä²»¿ÉÄÜ»áÓÐ¶Ô°üµÄÎ»ÖÃ½øÐÐ²Ù×÷µÄÎ»ÖÃ
+		//Î´ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö®Ç°ï¿½Ð¼ä²»ï¿½ï¿½ï¿½Ü»ï¿½ï¿½Ð¶Ô°ï¿½ï¿½ï¿½Î»ï¿½Ã½ï¿½ï¿½Ð²ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½
 		if(cur_pkt_->position() != cur_pkt_->length())
 			throw std::exception("cur_pkt_->position()!=cur_pkt_->length()");
-		//ÔõÃ´¿ÉÄÜÕû°üÒÑ¾­½âÍêÁË,¾ÓÈ»»¹Ã»ÓÐµ÷ÓÃ´¦Àíº¯Êý£¬¿Ï¶¨ÊÇÓÐÒì³£
+		//ï¿½ï¿½Ã´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½,ï¿½ï¿½È»ï¿½ï¿½Ã»ï¿½Ðµï¿½ï¿½Ã´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ì³£
 		if(cur_pkt_->length() >= packet_size)
 			throw std::exception("cur_pkt_->length() >= packet_size");
 
-		//ÕâÒ»´Î¿ÉÒÔ¶ÁÈ¡µÄÖµ£¬ÊÇ¿ÉÒÔ¶ÁºÍÎ´¶ÁµÄÊ£ÏÂµÄ²¿·Ö
+		//ï¿½ï¿½Ò»ï¿½Î¿ï¿½ï¿½Ô¶ï¿½È¡ï¿½ï¿½Öµï¿½ï¿½ï¿½Ç¿ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½Ê£ï¿½ÂµÄ²ï¿½ï¿½ï¿½
 		int readlen = std::min(len,packet_size - cur_pkt_->length());
 
 		cur_pkt_->position(cur_pkt_->length());
 		cur_pkt_->writeBytes(buf,readlen);		
 
-		//¿ÉÒÔÆ«ÒÆÁË
+		//ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½ï¿½ï¿½
 		total += readlen;				
 		buf += readlen;
 		len -= readlen;
 
-		//Èç¹ûÒÑ¾­ÊÇÍêÕû°üÁË£¬¾Í¿ÉÒÔµ÷ÓÃ´¦Àíº¯Êý²¢ÇÒ¸ù¾Ý·µ»ØÖµÊÇ·ñÓÐ
+		//ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë£ï¿½ï¿½Í¿ï¿½ï¿½Ôµï¿½ï¿½Ã´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò¸ï¿½ï¿½Ý·ï¿½ï¿½ï¿½Öµï¿½Ç·ï¿½ï¿½ï¿½
 		if(cur_pkt_->length() == packet_size){
-			//µ÷ÓÃ´¦Àíº¯Êý£¬Èç¹ûÓÐ·µ»ØÊý¾Ý°ü¾ÍÇå¿ÕºóÊ¹ÓÃ,Èç¹ûÃ»ÓÐ·µ»Ø¾Í¹¹ÔìÒ»¸öÐÂµÄ
+			//ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õºï¿½Ê¹ï¿½ï¿½,ï¿½ï¿½ï¿½ï¿½Ã»ï¿½Ð·ï¿½ï¿½Ø¾Í¹ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Âµï¿½
 			if(onPacket_){
-				//Ìø¹ý°ü³¤
+				//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 				cur_pkt_->position(PACKET_HEAD_SIZE);
 				onPacket_(cur_pkt_);
 			}
@@ -207,7 +206,7 @@ int TcpConnection::ComplatePacket(uint8_t *buf,int len)
 		}		
 	}	
 
-	//ÒÑ¶ÁÈ¡°üÍ·
+	//ï¿½Ñ¶ï¿½È¡ï¿½ï¿½Í·
 	return len;
 }
 
