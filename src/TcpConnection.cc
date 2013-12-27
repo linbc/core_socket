@@ -151,8 +151,7 @@ int TcpConnection::ComplatePacket(uint8_t *buf,int len)
 
 	int total = 0;
 	//剩下的大于指示包长的就可以读
-	while (len > PACKET_HEAD_SIZE)
-	{
+	while (len > PACKET_HEAD_SIZE) {
 		if(!cur_pkt_)
 			cur_pkt_ = new PacketType;
 
