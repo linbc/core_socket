@@ -2,6 +2,10 @@
 #define _TCP_CONNECTION_H_
 
 #include "socket_include.h"
+#include <core_obj/ByteArray.h>
+#include <gtest/gtest.h>
+
+typedef core_obj::ByteArray PacketType;
 
 #define TCP_BUFSIZE_READ 16400
 
@@ -10,9 +14,12 @@ namespace core_socket
 
 class ConnectionMgr;
 
+typedef std::function<void (PacketType*&)> PacketHandler;
+
 //tcp连接及其处理
 class TcpConnection
 {
+	FRIEND_TEST(core_socket,ComplatePacket);
 	friend class ConnectionMgr;
 public:	
 	//用于输出的内存缓冲区
@@ -56,6 +63,11 @@ public:
 	void Send(const char *ptr,int size){
 		send_buf_.write(ptr,size);
 	}
+	void SendPacket(PacketType& pkt){
+		uint16_t len = pkt.length()+sizeof(len);
+		send_buf_.write((char*)&len,sizeof(len));
+		send_buf_.write(pkt.data(),pkt.length());
+	}
 	void Attach(int s){		
 		fd_ = s;
 	}
@@ -71,7 +83,10 @@ public:
 	string remote_ip(){return inet_ntoa(remote_addr_.sin_addr);}
 	//端口
 	uint16_t remote_port(){return ntohs(remote_addr_.sin_port);}
-
+	//包处理函数
+	void onPacket(PacketHandler handler){onPacket_ = handler;}
+	//管理器
+	void mgr(ConnectionMgr *m){mgr_ = m;}
 protected:
 	int fd_;
 	ConnectionMgr *mgr_;
@@ -80,6 +95,12 @@ protected:
 	bool OnWrite();	
 	void OnError();	
 
+	//传入数据,判断是否已成为一个完整包，如果已经完成，
+	//那么调用包处理函数，并根据返回值修改连接的当前数据包
+	//返回还剩下多少的字节数未读
+	int ComplatePacket(uint8_t *buf,int len);
+	void ReadPacket();
+
 	OutputBuffer send_buf_;
 	struct sockaddr_in remote_addr_;
 
@@ -87,7 +108,13 @@ protected:
 	int closing_;
 
 private:
+	//用于接收tcp内容的缓冲区
 	char tmp_buf_[TCP_BUFSIZE_READ];
+	//缓冲区接收到的内容长度
+	int tmp_buf_count_;
+
+	PacketType *cur_pkt_;
+	PacketHandler onPacket_;
 };
 
 }

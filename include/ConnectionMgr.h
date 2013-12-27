@@ -6,13 +6,15 @@
 
 namespace core_socket{
 
-typedef std::function<TcpConnection*(ConnectionMgr *mgr)> ConnectionFactoryFunc;
+typedef std::function<TcpConnection*(int sock)> ConnectionFactoryFunc;
 
 //连接管理器：
 //主要功能:监听或者连接到远程端口,其中连接为阻塞式接口,其他为非阻塞
 class ConnectionMgr
 {
 public:	
+	static WSAInitializer INIT_SOCKET;
+	
 	typedef std::vector<TcpConnection*> ConnectionVec;
 	struct tcpconnection_fd_cmp_func{
 		bool operator()(ConnectionVec::value_type& l,int fd){
@@ -36,7 +38,8 @@ public:
 
 	//当前连接数量
 	int GetCount(){return conntions_.size()+opening_sockets_.size();}
-
+	//关闭连接管理器
+	void Close();
 protected:
 	bool Remove(TcpConnection *conn);
 	void Insert(TcpConnection *conn);			
@@ -52,6 +55,7 @@ protected:
 	fd_set	write_set_;	
 	fd_set	error_set_;
 };
+
 
 }
 #endif

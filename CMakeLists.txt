@@ -44,6 +44,7 @@ SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/out_libs)
 include_directories(
   ${CMAKE_BINARY_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_SOURCE_DIR}/include
   ${CMAKE_BINARY_DIR}/deps
   ${CMAKE_BINARY_DIR}/deps/gtest/include
@@ -52,5 +53,11 @@ LINK_DIRECTORIES(
   ${CMAKE_BINARY_DIR}/deps/lib
 )
 
-add_subdirectory(src)
-add_subdirectory(test)
+######################################
+##项目文件
+file(GLOB sources_localdir src/*.cpp src/*.h src/*.c src/*.cc include/*.h)
+add_library(core_socket STATIC ${sources_localdir})
+
+file(GLOB sources_test test/*.cpp test/*.h test/*.c test/*.cc)
+add_executable(core_socket_test ${sources_test})
+target_link_libraries(core_socket_test gtest core_socket)

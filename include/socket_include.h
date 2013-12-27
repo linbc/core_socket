@@ -246,6 +246,10 @@ namespace core_socket{
 
 }
 
+class WSAInitializer
+{
+
+};
 
 #endif
 

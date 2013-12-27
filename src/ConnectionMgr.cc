@@ -2,14 +2,16 @@
 
 namespace core_socket{
 
+WSAInitializer ConnectionMgr::INIT_SOCKET;
+
 //////////////////////////////////////////////////////////////////////////
 //for ListenSocket
 class ListenSocket:public TcpConnection
 {
 public:
-	ListenSocket();
-	virtual ~ListenSocket();
-
+	//ListenSocket();
+	//virtual ~ListenSocket();
+	ConnectionFactoryFunc creator_;
 protected:
 	virtual bool OnRead()
 	{
@@ -28,25 +30,49 @@ protected:
 			closesocket(a_s);
 			return true;
 		}
-		TcpConnection *conn = creator_(mgr_);
+		TcpConnection *conn = creator_(a_s);
+		conn->mgr(mgr_);
 		conn->Attach(a_s);
 		conn->remote_addr(sa);
 		conn->SetNonblocking(true);
 		mgr_->Put(conn);
+		
+		//打印一下日志
+		std::stringstream ss;
+		ss << conn->remote_ip() << ":" << conn->remote_port();
+		mgr_->Log(this,"ListenSocket::OnRead",0,ss.str(),LOG_LEVEL_INFO);
+
 		return true;
-	}
-	virtual void OnClose();
-	ConnectionFactoryFunc creator_;
+	}	
 };
 
 //////////////////////////////////////////////////////////////////////////
 //for ConnectionMgr
+
+ConnectionMgr::ConnectionMgr()
+{
+
+}
+ConnectionMgr::~ConnectionMgr()
+{
+	Close();
+}
+
+void ConnectionMgr::Log(TcpConnection *p,const std::string& user_text,int err,const std::string& sys_err,loglevel_t t /* = LOG_LEVEL_WARNING */)
+{
+	std::cout << user_text << ";" << sys_err << std::endl;
+}
 
 TcpConnection *ConnectionMgr::Get(int fd)
 {
 	auto it = std::lower_bound(conntions_.begin(),conntions_.end(),fd,tcpconnection_fd_cmp_func());
 	if(it != conntions_.end() && (*it)->fd_ == fd)
 		return *it;
+	//从待加入的数组中也找一下
+	for (auto *conn:opening_sockets_){
+		if(conn->fd_ == fd)
+			return conn;
+	}
 	return NULL;
 }
 
@@ -85,11 +111,20 @@ bool ConnectionMgr::Listen(std::string host,int port,ConnectionFactoryFunc creat
 	server_addr.sin_addr.s_addr = inet_addr(host.c_str());
 	memset(server_addr.sin_zero, '\0', sizeof(server_addr.sin_zero));
 	if (bind(s, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+		Log(NULL," ConnectionMgr::Listen",Errno,StrError(Errno));;
 		return false;
 	}
 
 	if (listen(s, 20) == -1)
 		return false;
+
+	//将监听连接放入连接管理器
+	ListenSocket *listenSock = new ListenSocket;
+	listenSock->creator_ = creator;
+	listenSock->Attach(s);
+	listenSock->mgr(this);
+	listenSock->remote_addr(server_addr);
+	Put(listenSock);
 
 	return true;
 }
@@ -136,7 +171,8 @@ bool ConnectionMgr::Connection(std::string host,int port,ConnectionFactoryFunc c
 		if(n == 0) break;
 	} while (trytimes-- > 0);
 
-	TcpConnection *conn = creator(this);
+	TcpConnection *conn = creator(s);
+	conn->mgr(this);
 	conn->Attach(s);
 	conn->remote_addr(_addr);
 	conn->SetNonblocking(true);
@@ -186,13 +222,40 @@ void ConnectionMgr::Select(int ms)
 	}
 
 	for (auto conn:conntions_){
-		if (FD_ISSET(conn->fd_, &read_set_))
-			conn->OnRead();
-		if (FD_ISSET(conn->fd_, &write_set_))
-			conn->OnWrite();
-		if (FD_ISSET(conn->fd_, &read_set_))
+		if (FD_ISSET(conn->fd_, &read_set_) && !conn->OnRead()){			
+			closing_sockets_.push_back(conn);
+			break;
+		}
+		if (FD_ISSET(conn->fd_, &write_set_) && !conn->OnWrite()){
+			closing_sockets_.push_back(conn);
+			break;
+		}
+		if (FD_ISSET(conn->fd_, &error_set_))
 			conn->OnError();
 	}
+}
+
+void ConnectionMgr::Close()
+{
+	for (auto conn:closing_sockets_) {
+		conn->OnClose();		
+		Remove(conn);
+		delete conn;
+	}
+	closing_sockets_.clear();
+
+	for (auto conn:opening_sockets_){
+		conn->OnClose();		
+		Remove(conn);
+		delete conn;
+	}
+	opening_sockets_.clear();	
+
+	for (auto conn:conntions_){
+		conn->OnClose();		
+		delete conn;
+	}
+	conntions_.clear();
 }
 
 }

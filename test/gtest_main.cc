@@ -42,7 +42,7 @@ std::string g_mysql_char_info = "192.168.3.2;3306;dev;asdf;char";
 int main(int argc, char **argv) {	
 #if _WIN32
 	_CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_REPORT_FLAG) | _CRTDBG_LEAK_CHECK_DF  );
-	//_CrtSetBreakAlloc(85872);
+	//_CrtSetBreakAlloc(898);
 #endif
 
   std::cout << "Running main() from gtest_main.cc\n";
